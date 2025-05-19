@@ -1,0 +1,6 @@
+pip install -r requirements.txt
+__________________-
+
+@echo off
+python main.py
+pause
