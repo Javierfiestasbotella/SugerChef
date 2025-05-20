@@ -9,6 +9,10 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml.ns import qn
 from deep_translator import GoogleTranslator
 import os
+import webbrowser
+
+
+
 
 # Ruta base
 BASE_DIR = Path(__file__).resolve().parent
@@ -203,12 +207,30 @@ boton_frame.pack(pady=20)
 
 estilo_boton = {"font": ("Georgia", 12), "bg": "#B3DAF1", "fg": "#003E6B", "width": 30, "relief": "raised"}
 
+
+def abrir_video():
+    webbrowser.open("https://www.youtube.com/watch?v=E2mLzJxLz8s")
+
+def mostrar_info():
+    respuesta = messagebox.askyesno(
+        "Información",
+        "Esta aplicación está diseñada para gestionar de forma profesional las sugerencias gastronómicas del restaurante.\n\n"
+        "• Puedes crear nuevas sugerencias introduciendo el precio y la descripción en español, que se traduce automáticamente al inglés.\n"
+        "• Puedes generar menús profesionales en formato Word (ESP/ENG) a partir de sugerencias seleccionadas.\n"
+        "• También puedes modificar cualquier sugerencia existente o imprimir un listado completo actualizado.\n\n"
+        "¿Deseas ver el video explicativo?"
+    )
+    if respuesta:
+        abrir_video()
+
+
+
 botones = [
     ("Crear sugerencia nueva", crear_sugerencia),
     ("Crear menú en Word", crear_menu),
     ("Modificar sugerencia", modificar_sugerencia),
     ("Imprimir listado completo", imprimir_listado),
-    ("Información / Incidencias", lambda: messagebox.showinfo("Información", "Esta aplicación está diseñada para gestionar de forma profesional las sugerencias gastronómicas del restaurante.\n\n• Puedes crear nuevas sugerencias introduciendo el precio y la descripción en español, que se traduce automáticamente al inglés.\n• Puedes generar menús profesionales en formato Word (ESP/ENG) a partir de sugerencias seleccionadas.\n• También puedes modificar cualquier sugerencia existente o imprimir un listado completo actualizado.\n\nSoporte Técnico:\nJavier Fiestas Botella\nTel: 628 796 613\nEmail: javierfiestasbotella@gmail.com"))
+    ("Información / Incidencias", mostrar_info)
 ]
 for texto, comando in botones:
     tk.Button(boton_frame, text=texto, command=comando, **estilo_boton).pack(pady=6)
