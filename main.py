@@ -51,9 +51,11 @@ sugerencias={
     27: [16.95, "Tosta de hojaldre caramelizado con tartar de atún, aliñado con Kimchi puro, lima y cebolleta china.", "Caramelized puff pastry toast with tuna tartare, pure kimchi, lime and spring onion"],
     28: [13.95, "Empanadas de carne acompañadas de salsa criolla y chimichurri.", "Meat empanadas with criolla sauce and chimichurri"],
     29: [17.95, "Salmón con piel de almendra sobre tagliatelle con salsa parmesana.", "Almond-crusted salmon on tagliatelle with parmesan sauce"],
-    30: [18.95, "Merluza en salsa verde con guisantes y gambones crujientes", "Hake in green sauce with peas and crispy prawns"]
-
-
+    30: [18.95, "Merluza en salsa verde con guisantes y gambones crujientes", "Hake in green sauce with peas and crispy prawns"],
+    31: [10.95, "Hojaldre de manzana y queso de cabra con nueces caramelizadas", "Apple and goat cheese puff pastry with caramelized nuts"],
+    32: [10.95, "Ajo blanco de mango con vinagreta y peta zeta de lima", "Mango ajoblanco with vinaigrette and lime popping candy"],
+    33: [10.95, "Tostas de morcilla con caramelo de vino tinto", "Blood sausage toasts with red wine caramel"],
+    34: [14.95, "Torreznos con puré de patatas aliñado y pimientos del padrón", "Torreznos with seasoned mashed potatoes and padrón peppers"]
 }
 
 # Traducción
