@@ -212,8 +212,29 @@ def interfaz():
     ]
     for texto, comando in botones:
         tk.Button(frame, text=texto, command=comando, font=("Georgia", 12), bg="#B3DAF1", fg="#003E6B", width=40).pack(pady=6)
+#___________________________________________
+    # Información personal y enlaces
+    info_frame = tk.Frame(root, bg="#E6F2FA")
+    info_frame.pack(pady=15)
+
+    autor = tk.Label(info_frame, text="App creada por Francisco Javier Fiestas Botella", font=("Georgia", 9), bg="#E6F2FA", fg="#003E6B")
+    autor.pack()
+
+    github = tk.Label(info_frame, text="GitHub: Javierfiestasbotella", font=("Georgia", 9, "underline"), fg="blue", cursor="hand2", bg="#E6F2FA")
+    github.pack()
+    github.bind("<Button-1>", lambda e: webbrowser.open("https://github.com/Javierfiestasbotella"))
+
+    video = tk.Label(info_frame, text="Ver explicación en YouTube", font=("Georgia", 9, "underline"), fg="blue", cursor="hand2", bg="#E6F2FA")
+    video.pack()
+    video.bind("<Button-1>", lambda e: webbrowser.open("https://youtu.be/E2mLzJxLz8s"))  # Sustituye si tienes otro enlace
+
+    telefono = tk.Label(info_frame, text="Contacto: 628796613", font=("Georgia", 9), bg="#E6F2FA", fg="#003E6B")
+    telefono.pack()
 
     root.mainloop()
+#____________________________
+
+
 
 if __name__ == "__main__":
     interfaz()
