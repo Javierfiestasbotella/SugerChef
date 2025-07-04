@@ -11,6 +11,7 @@ from deep_translator import GoogleTranslator
 import os
 import webbrowser
 import ast
+import requests
 
 # Ruta base
 BASE_DIR = Path(__file__).resolve().parent
@@ -46,10 +47,26 @@ def guardar_bbdd(sugerencias):
     doc.save(BBDD_FILE)
 
 # Traducción
+DEEPL_API_KEY = "1e2d1343-5e72-4dd7-b6ae-7bbb93f30c96:fx"
+
 def traducir_a_ingles(texto_es):
+    url = "https://api-free.deepl.com/v2/translate"
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    data = {
+        "auth_key": DEEPL_API_KEY,
+        "text": texto_es,
+        "target_lang": "EN"
+    }
     try:
-        return GoogleTranslator(source='auto', target='en').translate(texto_es)
-    except:
+        response = requests.post(url, headers=headers, data=data)
+        response.raise_for_status()
+        result = response.json()
+        return result["translations"][0]["text"]
+    except Exception as e:
+        print("Error al traducir:", e)
+        print("Respuesta del servidor:", response.text)
         return texto_es + " (no traducido)"
 
 # Crear sugerencia nueva
@@ -72,16 +89,17 @@ def crear_sugerencia():
 
     def guardar():
         try:
-            precio = float(entry_precio.get())
+            precio_str = entry_precio.get().replace(",", ".")
+            precio = float(precio_str)
             desc_es = text_desc.get("1.0", tk.END).strip()
             desc_en = traducir_a_ingles(desc_es)
             nueva_clave = max(sugerencias.keys(), default=0) + 1
             sugerencias[nueva_clave] = [precio, desc_es, desc_en]
             guardar_bbdd(sugerencias)
-            messagebox.showinfo("Éxito", f"Sugerencia {nueva_clave} añadida", parent=ventana)
+            messagebox.showinfo("Éxito", f"Sugerencia {nueva_clave} añadida.", parent=ventana)
             ventana.destroy()
-        except:
-            messagebox.showerror("Error", "Datos inválidos", parent=ventana)
+        except Exception as e:
+            messagebox.showerror("Error", f"Datos inválidos.\n\nDetalles: {str(e)}", parent=ventana)
 
     tk.Button(frame, text="Guardar sugerencia", command=guardar).grid(row=2, columnspan=2, pady=10)
 
@@ -112,7 +130,7 @@ def modificar_sugerencia():
 
     def guardar():
         try:
-            nuevo_precio = float(entry_precio.get())
+            nuevo_precio = float(entry_precio.get().replace(",", "."))
             nueva_desc_es = text_desc.get("1.0", tk.END).strip()
             nueva_desc_en = traducir_a_ingles(nueva_desc_es)
             sugerencias[clave] = [nuevo_precio, nueva_desc_es, nueva_desc_en]
@@ -124,14 +142,48 @@ def modificar_sugerencia():
 
     tk.Button(frame, text="Guardar cambios", command=guardar).grid(row=2, columnspan=2, pady=10)
 
+# Crear listado Word
+def crear_listado():
+    sugerencias = cargar_sugerencias()
+    if not sugerencias:
+        messagebox.showwarning("Aviso", "No hay sugerencias guardadas")
+        return
+
+    doc = Document()
+    doc.add_heading("Listado de Sugerencias", level=1)
+
+    for clave in sorted(sugerencias):
+        precio, desc_es, desc_en = sugerencias[clave]
+        p = doc.add_paragraph()
+        p.add_run(f"{clave}. ").bold = True
+        p.add_run(f"{desc_es} ({precio}€)")
+
+    doc.save(LISTADO_FILE)
+    messagebox.showinfo("Listado generado", f"Listado guardado en {LISTADO_FILE.name}")
+
 # Crear menú Word
+from pathlib import Path
+from docx.shared import Cm
+BASE_DIR = Path(__file__).resolve().parent
+ESP_FILE = BASE_DIR / "esp.docx"
+ENG_FILE = BASE_DIR / "eng.docx"
+
 def crear_menu():
     sugerencias = cargar_sugerencias()
     seleccion = simpledialog.askstring("Menú", "Números de sugerencia (ej: 1,2,3):")
     if not seleccion:
         return
 
-    indices = [int(i.strip()) for i in seleccion.split(",") if i.strip().isdigit() and int(i.strip()) in sugerencias]
+    if any('.' in s for s in seleccion.split(" ")):
+        messagebox.showerror("Error", "Formato incorrecto. Por favor, separa los números con comas, no con puntos.")
+        return
+
+    try:
+        indices = [int(i.strip()) for i in seleccion.replace(".", ",").split(",") if i.strip().isdigit() and int(i.strip()) in sugerencias]
+    except Exception as e:
+        messagebox.showerror("Error", f"Entrada inválida: {str(e)}\nAsegúrate de separar los números con comas.")
+        return
+
     hoy = date.today().isoformat()
     output_dir = BASE_DIR / 'menus'
     output_dir.mkdir(exist_ok=True)
@@ -139,83 +191,74 @@ def crear_menu():
     plantilla_esp = Document(ESP_FILE)
     plantilla_eng = Document(ENG_FILE)
 
-    for idx, num in enumerate(indices):
-        precio, desc_es, desc_en = sugerencias[num]
-        for doc, texto, precio_str in [
-            (plantilla_esp, desc_es, f"{precio}€"),
-            (plantilla_eng, desc_en, f"{precio}€")]:
+    def agregar_sugerencias(doc, idioma):
+        for duplicado in range(2):  # Dos bloques
+            if duplicado == 1:
+                doc.add_paragraph()  # Separación entre copias
+                doc.add_paragraph()  # Separación entre copias
 
-            p = doc.add_paragraph()
-            run_texto = p.add_run(f"- {texto} - ")
-            run_precio = p.add_run(precio_str)
-            for r in [run_texto, run_precio]:
-                r.font.name = 'Georgia'
-                r._element.rPr.rFonts.set(qn('w:eastAsia'), 'Georgia')
-                r.font.size = Pt(12)
-            run_precio.bold = True
-            color = RGBColor(0, 0, 0) if idx % 2 == 0 else RGBColor(0, 0, 255)
-            run_texto.font.color.rgb = color
-            run_precio.font.color.rgb = color
-            p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-            doc.add_paragraph("")
+            for idx, num in enumerate(indices):
+                precio, desc_es, desc_en = sugerencias[num]
+                texto = desc_es if idioma == 'ES' else desc_en
+                p = doc.add_paragraph()
+                p.paragraph_format.left_indent = Cm(2.5)
+                p.paragraph_format.right_indent = Cm(2.5)
+
+                run_texto = p.add_run(f"- {texto} - ")
+                run_precio = p.add_run(f"{precio}€")
+                for r in [run_texto, run_precio]:
+                    r.font.name = 'Georgia'
+                    r._element.rPr.rFonts.set(qn('w:eastAsia'), 'Georgia')
+                    r.font.size = Pt(12)
+                color = RGBColor(0, 0, 0) if idx % 2 == 0 else RGBColor(0, 0, 255)
+                run_texto.font.color.rgb = color
+                run_precio.font.color.rgb = color
+                run_precio.bold = True
+                p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+            # Título al final del bloque
+            titulo = doc.add_paragraph()
+            titulo.paragraph_format.left_indent = Cm(0)
+            titulo.paragraph_format.right_indent = Cm(0)
+            texto_titulo = "SUGERENCIAS" if idioma == 'ES' else "SUGGESTIONS"
+            run_titulo = titulo.add_run(texto_titulo)
+            run_titulo.bold = True
+            run_titulo.font.size = Pt(14)
+            run_titulo.font.color.rgb = RGBColor(0, 0, 255)
+            titulo.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+    agregar_sugerencias(plantilla_esp, 'ES')
+    agregar_sugerencias(plantilla_eng, 'EN')
 
     plantilla_esp.save(output_dir / f"esp_{hoy}.docx")
     plantilla_eng.save(output_dir / f"eng_{hoy}.docx")
     messagebox.showinfo("Menú creado", "Menús Word generados correctamente")
-
-# Imprimir listado completo
-def imprimir_listado():
-    sugerencias = cargar_sugerencias()
-    if not sugerencias:
-        messagebox.showwarning("Aviso", "No hay sugerencias guardadas.")
-        return
-
-    doc = Document()
-    doc.add_heading("Listado completo de sugerencias", 0)
-    for clave, (precio, desc_es, desc_en) in sorted(sugerencias.items()):
-        p = doc.add_paragraph()
-        run = p.add_run(f"{clave}. {desc_es}\n{desc_en} - {precio}€")
-        run.font.name = 'Georgia'
-        run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Georgia')
-        run.font.size = Pt(11)
-        p.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-    doc.save(LISTADO_FILE)
-    messagebox.showinfo("Listado generado", "Listado completo guardado correctamente")
-
 # Interfaz principal
 def interfaz():
     root = tk.Tk()
-    root.title("SugerChef - La Chancla")
-    root.geometry("500x620")
-    root.configure(bg="#E6F2FA")
+    root.title("Sugerchef")
     if ICONO_PATH.exists(): root.iconbitmap(ICONO_PATH)
-
-    frame = tk.Frame(root, bg="#E6F2FA")
-    frame.pack()
+    root.configure(bg="#E6F2FA")
 
     if LOGO_PATH.exists():
-        from PIL import Image, ImageTk
-        logo_img = Image.open(LOGO_PATH).resize((160, 100))
-        logo = ImageTk.PhotoImage(logo_img)
-        logo_label = tk.Label(frame, image=logo, bg="#E6F2FA")
-        logo_label.image = logo
-        logo_label.pack(pady=10)
+        from PIL import ImageTk, Image
+        img = Image.open(LOGO_PATH)
+        img = img.resize((120, 120), Image.Resampling.LANCZOS)
+        logo = ImageTk.PhotoImage(img)
+        tk.Label(root, image=logo, bg="#E6F2FA").pack(pady=(10, 0))
 
-    tk.Label(frame, text="Sistema de Sugerencias del Chef", font=("Georgia", 16, "bold"), bg="#E6F2FA", fg="#005B96").pack(pady=5)
+    tk.Label(root, text="Sugerencias para Menú", font=("Georgia", 14, "bold"), bg="#E6F2FA", fg="#003E6B").pack(pady=5)
 
-    botones = [
-        ("Crear sugerencia nueva", crear_sugerencia),
-        ("Modificar sugerencia existente", modificar_sugerencia),
-        ("Crear menú en Word", crear_menu),
-        ("Imprimir listado completo", imprimir_listado),
-        ("Salir", root.quit)
-    ]
-    for texto, comando in botones:
-        tk.Button(frame, text=texto, command=comando, font=("Georgia", 12), bg="#B3DAF1", fg="#003E6B", width=40).pack(pady=6)
-#___________________________________________
-    # Información personal y enlaces
+    btn_frame = tk.Frame(root, bg="#E6F2FA")
+    btn_frame.pack(pady=10)
+
+    tk.Button(btn_frame, text="Crear sugerencia", command=crear_sugerencia, width=25).grid(row=0, column=0, padx=5, pady=5)
+    tk.Button(btn_frame, text="Modificar sugerencia", command=modificar_sugerencia, width=25).grid(row=0, column=1, padx=5, pady=5)
+    tk.Button(btn_frame, text="Crear menú Word", command=crear_menu, width=25).grid(row=1, column=0, padx=5, pady=5)
+    tk.Button(btn_frame, text="Imprimir listado completo", command=crear_listado, width=25).grid(row=1, column=1, padx=5, pady=5)
+
     info_frame = tk.Frame(root, bg="#E6F2FA")
-    info_frame.pack(pady=15)
+    info_frame.pack(pady=10)
 
     autor = tk.Label(info_frame, text="App creada por Francisco Javier Fiestas Botella", font=("Georgia", 9), bg="#E6F2FA", fg="#003E6B")
     autor.pack()
@@ -226,15 +269,12 @@ def interfaz():
 
     video = tk.Label(info_frame, text="Ver explicación en YouTube", font=("Georgia", 9, "underline"), fg="blue", cursor="hand2", bg="#E6F2FA")
     video.pack()
-    video.bind("<Button-1>", lambda e: webbrowser.open("https://youtu.be/E2mLzJxLz8s"))  # Sustituye si tienes otro enlace
+    video.bind("<Button-1>", lambda e: webbrowser.open("https://youtu.be/7ejvejTGhWk"))
 
     telefono = tk.Label(info_frame, text="Contacto: 628796613", font=("Georgia", 9), bg="#E6F2FA", fg="#003E6B")
     telefono.pack()
 
     root.mainloop()
-#____________________________
-
-
 
 if __name__ == "__main__":
     interfaz()
